@@ -1,15 +1,40 @@
 package com.example.abof
 
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import com.android.volley.Request
-import com.android.volley.Response
 import com.android.volley.toolbox.JsonObjectRequest
 import com.google.gson.Gson
 import org.json.JSONObject
+import java.time.Instant
 
 class AbofExperimentRepository constructor(private val volleyRequestQueue: VolleyRequestQueue) {
 
-    fun runExperiment() {
+    companion object {
+        private lateinit var INSTANCE: AbofExperimentRepository
+
+        fun create(volleyRequestQueue: VolleyRequestQueue): AbofExperimentRepository {
+            INSTANCE = AbofExperimentRepository(volleyRequestQueue)
+
+            return INSTANCE
+        }
+
+        fun getInstance(): AbofExperimentRepository {
+            return INSTANCE
+        }
+    }
+
+    private val totalTimeTaken = MutableLiveData<Long>()
+    private val experimentResponse = MutableLiveData<ExperimentResponse>()
+
+    init {
+        runExperiment()
+    }
+
+    private fun runExperiment() {
         println("Running experiment")
+        val startTime = Instant.now().toEpochMilli()
+
         val url = "http://15.197.158.50/api/run"
 
         val gson = Gson()
@@ -19,15 +44,30 @@ class AbofExperimentRepository constructor(private val volleyRequestQueue: Volle
             Request.Method.POST, url,
             JSONObject(jsonRequest),
             { response ->
-                println("++++++++++++++++++++ Response: %s".format(response.toString()))
+                experimentResponse.value =
+                    gson.fromJson(response.toString(), ExperimentResponse::class.java)
+
+                totalTimeTaken.value = Instant.now().toEpochMilli() - startTime
+
+                println("!!!!!!!!!!!!!!!!!!!! Took time: %d".format(totalTimeTaken.value!!))
             },
             { error ->
                 println("!!!!!!!!!!!!!!!!!!!! Error: %s".format(error.toString()))
             }
         )
 
+        jsonObjectRequest.setShouldCache(false)
+
         // Access the RequestQueue through your singleton class.
         this.volleyRequestQueue.add(jsonObjectRequest)
+    }
+
+    fun getTotalTimeTaken(): LiveData<Long> {
+        return totalTimeTaken
+    }
+
+    fun getExperimentResponse(): LiveData<ExperimentResponse> {
+        return experimentResponse
     }
 }
 
@@ -42,3 +82,17 @@ data class ExperimentRequest(
         val new_user: Boolean = false
     )
 }
+
+data class ExperimentResponse(
+    val app_id: String,
+    val project_id: String,
+    val active_experiments: List<ActiveExperiment>,
+    val tracking_cookie_name: String,
+    val tracking_data: String,
+)
+
+data class ActiveExperiment(
+    val short_name: String,
+    val variation: String,
+    val data: JSONObject
+)

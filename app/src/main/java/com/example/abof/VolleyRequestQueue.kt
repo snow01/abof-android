@@ -8,7 +8,19 @@ import com.android.volley.toolbox.Volley
 class VolleyRequestQueue private constructor(context: Context) {
     private val requestQueue: RequestQueue = Volley.newRequestQueue(context.applicationContext)
 
-    companion object : SingletonHolder<VolleyRequestQueue, Context>(::VolleyRequestQueue)
+    companion object {
+        private lateinit var INSTANCE: VolleyRequestQueue
+
+        fun create(context: Context): VolleyRequestQueue {
+            INSTANCE = VolleyRequestQueue(context)
+
+            return INSTANCE
+        }
+
+        fun getInstance(): VolleyRequestQueue {
+            return INSTANCE
+        }
+    }
 
     fun <T> add(req: Request<T>) {
         requestQueue.add(req)

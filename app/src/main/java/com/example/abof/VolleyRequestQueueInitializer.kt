@@ -8,7 +8,7 @@ class VolleyRequestQueueInitializer : Initializer<VolleyRequestQueue> {
     override fun create(context: Context): VolleyRequestQueue {
         println("======> Creating VolleyRequestQueue")
         VolleyLog.DEBUG = true
-        return VolleyRequestQueue.getInstance(context)
+        return VolleyRequestQueue.create(context)
     }
 
     override fun dependencies(): List<Class<out Initializer<*>>> {

@@ -6,11 +6,8 @@ import androidx.startup.Initializer
 class AbofExperimentRepositoryInitializer : Initializer<AbofExperimentRepository> {
     override fun create(context: Context): AbofExperimentRepository {
         println("======> Creating AbofExperimentRepository")
-        val repository = AbofExperimentRepository(VolleyRequestQueue.getInstance(context))
 
-        repository.runExperiment()
-
-        return repository
+        return AbofExperimentRepository.create(VolleyRequestQueue.getInstance())
     }
 
     override fun dependencies(): List<Class<out Initializer<*>>> {
