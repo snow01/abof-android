@@ -4,7 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
 
 class ExperimentDataViewModel : ViewModel() {
-    val totalTimeTaken: LiveData<Long>
+    val totalTimeTaken: LiveData<String>
     val experimentData: LiveData<ExperimentResponse>
 
     init {

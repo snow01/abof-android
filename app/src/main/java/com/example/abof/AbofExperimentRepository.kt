@@ -1,5 +1,7 @@
 package com.example.abof
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.android.volley.Request
@@ -8,6 +10,7 @@ import com.google.gson.Gson
 import org.json.JSONObject
 import java.time.Instant
 
+@RequiresApi(Build.VERSION_CODES.O)
 class AbofExperimentRepository constructor(private val volleyRequestQueue: VolleyRequestQueue) {
 
     companion object {
@@ -24,13 +27,14 @@ class AbofExperimentRepository constructor(private val volleyRequestQueue: Volle
         }
     }
 
-    private val totalTimeTaken = MutableLiveData<Long>()
+    private val totalTimeTaken = MutableLiveData<String>()
     private val experimentResponse = MutableLiveData<ExperimentResponse>()
 
     init {
         runExperiment()
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun runExperiment() {
         println("Running experiment")
         val startTime = Instant.now().toEpochMilli()
@@ -47,9 +51,9 @@ class AbofExperimentRepository constructor(private val volleyRequestQueue: Volle
                 experimentResponse.value =
                     gson.fromJson(response.toString(), ExperimentResponse::class.java)
 
-                totalTimeTaken.value = Instant.now().toEpochMilli() - startTime
+                totalTimeTaken.value = "%d ms".format(Instant.now().toEpochMilli() - startTime)
 
-                println("!!!!!!!!!!!!!!!!!!!! Took time: %d".format(totalTimeTaken.value!!))
+                println("!!!!!!!!!!!!!!!!!!!! Took time: %s".format(totalTimeTaken.value!!))
             },
             { error ->
                 println("!!!!!!!!!!!!!!!!!!!! Error: %s".format(error.toString()))
@@ -62,7 +66,7 @@ class AbofExperimentRepository constructor(private val volleyRequestQueue: Volle
         this.volleyRequestQueue.add(jsonObjectRequest)
     }
 
-    fun getTotalTimeTaken(): LiveData<Long> {
+    fun getTotalTimeTaken(): LiveData<String> {
         return totalTimeTaken
     }
 
