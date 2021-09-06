@@ -7,11 +7,11 @@ class AbofExperimentRepositoryInitializer : Initializer<AbofExperimentRepository
     override fun create(context: Context): AbofExperimentRepository {
         println("======> Creating AbofExperimentRepository")
 
-        return AbofExperimentRepository.create(VolleyRequestQueue.getInstance())
+        return AbofExperimentRepository.create(context)
     }
 
     override fun dependencies(): List<Class<out Initializer<*>>> {
-        return listOf(VolleyRequestQueueInitializer::class.java)
+        return emptyList()
     }
 
 }

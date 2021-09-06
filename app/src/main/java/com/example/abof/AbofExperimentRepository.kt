@@ -1,23 +1,33 @@
 package com.example.abof
 
-import android.os.Build
-import androidx.annotation.RequiresApi
+import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.android.volley.Request
-import com.android.volley.toolbox.JsonObjectRequest
 import com.google.gson.Gson
-import org.json.JSONObject
-import java.time.Instant
 
-@RequiresApi(Build.VERSION_CODES.O)
-class AbofExperimentRepository constructor(private val volleyRequestQueue: VolleyRequestQueue) {
+class AbofExperimentRepository constructor(private val httpClient: ExperimentRunnerClient) {
 
     companion object {
         private lateinit var INSTANCE: AbofExperimentRepository
 
-        fun create(volleyRequestQueue: VolleyRequestQueue): AbofExperimentRepository {
-            INSTANCE = AbofExperimentRepository(volleyRequestQueue)
+        fun create(context: Context): AbofExperimentRepository {
+            INSTANCE = when (BuildConfig.HTTP_CLIENT) {
+                "cronet" -> {
+                    AbofExperimentRepository(CronetClient(context))
+                }
+                "volley" -> {
+                    AbofExperimentRepository(VolleyClient(context))
+                }
+                "okhttp" -> {
+                    AbofExperimentRepository(OkHttpClient(context))
+                }
+//                "basic" -> {
+//                    AbofExperimentRepository(BasicHttpClient(context))
+//                }
+                else -> {
+                    AbofExperimentRepository(VolleyClient(context))
+                }
+            }
 
             return INSTANCE
         }
@@ -27,51 +37,30 @@ class AbofExperimentRepository constructor(private val volleyRequestQueue: Volle
         }
     }
 
-    private val totalTimeTaken = MutableLiveData<String>()
-    private val experimentResponse = MutableLiveData<ExperimentResponse>()
+    val totalTimeTaken = MutableLiveData<Long>()
+    val experimentResponse = MutableLiveData<ExperimentResponse>()
+    val gson = Gson()
 
     init {
-        runExperiment()
+        if (BuildConfig.RUN_ON_APP_START) {
+            runExperiment()
+        }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun runExperiment() {
-        println("Running experiment")
-        val startTime = Instant.now().toEpochMilli()
-
-        val url = "http://15.197.158.50/api/run"
-
-        val gson = Gson()
-        val jsonRequest = gson.toJson(ExperimentRequest(user_id = "1234"))
-
-        val jsonObjectRequest = JsonObjectRequest(
-            Request.Method.POST, url,
-            JSONObject(jsonRequest),
-            { response ->
-                experimentResponse.value =
-                    gson.fromJson(response.toString(), ExperimentResponse::class.java)
-
-                totalTimeTaken.value = "%d ms".format(Instant.now().toEpochMilli() - startTime)
-
-                println("!!!!!!!!!!!!!!!!!!!! Took time: %s".format(totalTimeTaken.value!!))
-            },
-            { error ->
-                println("!!!!!!!!!!!!!!!!!!!! Error: %s".format(error.toString()))
-            }
-        )
-
-        jsonObjectRequest.setShouldCache(false)
-
-        // Access the RequestQueue through your singleton class.
-        this.volleyRequestQueue.add(jsonObjectRequest)
+    fun runExperiment() {
+        httpClient.runExperiment(this)
     }
 
-    fun getTotalTimeTaken(): LiveData<String> {
+    fun getTotalTimeTaken(): LiveData<Long> {
         return totalTimeTaken
     }
 
     fun getExperimentResponse(): LiveData<ExperimentResponse> {
         return experimentResponse
+    }
+
+    fun getNewRequestBody(): String {
+        return gson.toJson(ExperimentRequest(user_id = "1234"))
     }
 }
 
@@ -88,15 +77,15 @@ data class ExperimentRequest(
 }
 
 data class ExperimentResponse(
-    val app_id: String,
-    val project_id: String,
-    val active_experiments: List<ActiveExperiment>,
-    val tracking_cookie_name: String,
-    val tracking_data: String,
+    val app_id: String = "",
+    val project_id: String = "",
+    val active_experiments: List<ActiveExperiment> = emptyList(),
+    val tracking_cookie_name: String = "",
+    val tracking_data: String = "",
 )
 
 data class ActiveExperiment(
     val short_name: String,
     val variation: String,
-    val data: JSONObject
+    val data: com.google.gson.JsonObject
 )
