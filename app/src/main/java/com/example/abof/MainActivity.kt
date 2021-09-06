@@ -67,6 +67,8 @@ fun ExperimentResultScreen(viewModel: ExperimentDataViewModel) {
         }
         Spacer(modifier = Modifier.height(16.dp))
         TrackingData(trackingData = experimentResponse.tracking_data)
+        Spacer(modifier = Modifier.height(16.dp))
+        Metrics(metrics = viewModel.metrics)
     }
 }
 
@@ -103,7 +105,7 @@ fun ActiveExperiment(activeExperiment: ActiveExperiment) {
 
 @Composable
 fun TrackingData(trackingData: String) {
-    Column {
+    Column(Modifier.padding(4.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             Text(
                 text = "Tracking Data",
@@ -113,5 +115,35 @@ fun TrackingData(trackingData: String) {
         }
         Text(text = trackingData, style = MaterialTheme.typography.body2)
     }
+}
 
+@Composable
+fun Metrics(metrics: LiveData<List<Gauge>>) {
+    val list: List<Gauge> by metrics.observeAsState(emptyList())
+
+    if (list.isEmpty()) {
+        return
+    }
+
+    Column(Modifier.padding(4.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+            Text(
+                text = "Metrics",
+                color = MaterialTheme.colors.secondaryVariant,
+                style = MaterialTheme.typography.subtitle2,
+            )
+        }
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+
+            ) {
+            items(list) { item ->
+                Row {
+                    Text(text = "${item.kind} = ", style = MaterialTheme.typography.subtitle2)
+                    Text(text = "${item.time_taken} ms", style = MaterialTheme.typography.body2)
+                }
+
+            }
+        }
+    }
 }

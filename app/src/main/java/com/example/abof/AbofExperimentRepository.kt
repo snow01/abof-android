@@ -19,11 +19,8 @@ class AbofExperimentRepository constructor(private val httpClient: ExperimentRun
                     AbofExperimentRepository(VolleyClient(context))
                 }
                 "okhttp" -> {
-                    AbofExperimentRepository(OkHttpClient(context))
+                    AbofExperimentRepository(OkHttpExperimentClient())
                 }
-//                "basic" -> {
-//                    AbofExperimentRepository(BasicHttpClient(context))
-//                }
                 else -> {
                     AbofExperimentRepository(VolleyClient(context))
                 }
@@ -37,7 +34,12 @@ class AbofExperimentRepository constructor(private val httpClient: ExperimentRun
         }
     }
 
+    var startTime: Long = 0
+        private set
+    private var previousEventTime: Long = 0
     val totalTimeTaken = MutableLiveData<Long>()
+    private val _metrics = emptyList<Gauge>().toMutableList()
+    val metrics = MutableLiveData<List<Gauge>>(_metrics)
     val experimentResponse = MutableLiveData<ExperimentResponse>()
     val gson = Gson()
 
@@ -61,6 +63,24 @@ class AbofExperimentRepository constructor(private val httpClient: ExperimentRun
 
     fun getNewRequestBody(): String {
         return gson.toJson(ExperimentRequest(user_id = "1234"))
+    }
+
+    fun addGauge(kind: String, current_time: Long) {
+        _metrics.add(Gauge(kind, current_time - previousEventTime))
+        this.metrics.postValue(_metrics)
+    }
+
+    fun setStartTime(current_time: Long) {
+        this.startTime = current_time
+        this.previousEventTime = current_time
+    }
+
+    fun setTotalTimeTaken(current_time: Long) {
+        this.totalTimeTaken.postValue(current_time - startTime)
+    }
+
+    fun getMetrics(): LiveData<List<Gauge>> {
+        return metrics
     }
 }
 
@@ -88,4 +108,9 @@ data class ActiveExperiment(
     val short_name: String,
     val variation: String,
     val data: com.google.gson.JsonObject
+)
+
+data class Gauge(
+    val kind: String,
+    val time_taken: Long
 )

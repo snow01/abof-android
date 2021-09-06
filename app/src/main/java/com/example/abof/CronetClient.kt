@@ -7,6 +7,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStreamReader
 import java.io.Reader
+import java.lang.StringBuilder
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
@@ -39,6 +40,7 @@ class CronetClient constructor(context: Context) : ExperimentRunnerClient {
         val request: UrlRequest = requestBuilder.build()
         Log.i("CronetClient", "REQUEST-STARTED = %d".format(System.currentTimeMillis()))
 
+        repository.setStartTime(System.currentTimeMillis())
         request.start()
     }
 }
@@ -47,8 +49,7 @@ class RequestCallback constructor(
     private val repository: AbofExperimentRepository
 ) : UrlRequest.Callback() {
 
-    private lateinit var byteArrayOutputStream: ByteArrayOutputStream
-//    private lateinit var bb: ByteBuffer
+    private lateinit var output: StringBuilder
 
     override fun onRedirectReceived(
         request: UrlRequest?,
@@ -59,17 +60,15 @@ class RequestCallback constructor(
     }
 
     override fun onResponseStarted(request: UrlRequest?, info: UrlResponseInfo?) {
-        Log.i("CronetClient", "RESPONSE-STARTED = %d".format(System.currentTimeMillis()))
-
         // TODO: get other headers
 
         val contentLength = getContentLength(info)
-        Log.i("CronetClient", "CONTENT-LENGTH = %d".format(contentLength))
-
-        byteArrayOutputStream = ByteArrayOutputStream(contentLength)
+        output = StringBuilder(contentLength)
 
         // read first
         request?.read(ByteBuffer.allocateDirect(1024))
+
+        repository.addGauge("RESPONSE-STARTED", System.currentTimeMillis())
     }
 
     override fun onReadCompleted(
@@ -77,29 +76,26 @@ class RequestCallback constructor(
         info: UrlResponseInfo?,
         byteBuffer: ByteBuffer?
     ) {
-        Log.i("CronetClient", "READ-COMPLETE = %d".format(System.currentTimeMillis()))
-
         byteBuffer?.flip();
 
-        Log.i("CronetClient", "PRE-READ-BYTES = %s".format(byteArrayOutputStream.toString("utf-8")))
-        Log.i("CronetClient", "INPUT-BYTES = %s".format(StandardCharsets.UTF_8.decode(byteBuffer).toString()))
-
-        byteArrayOutputStream.write(byteBuffer?.array())
-
-        Log.i("CronetClient", "READ-BYTES = %s".format(byteArrayOutputStream.toString("utf-8")))
+        output.append(StandardCharsets.UTF_8.decode(byteBuffer))
 
         // read, so clear
         byteBuffer?.clear();
 
         // read more
         request?.read(byteBuffer);
+
+        repository.addGauge("READ-COMPLETED", System.currentTimeMillis())
     }
 
     override fun onSucceeded(request: UrlRequest?, info: UrlResponseInfo?) {
         Log.i("CronetClient", "SUCCEEDED = %d".format(System.currentTimeMillis()))
-        val response = byteArrayOutputStream.toString("utf-8")
-        Log.i("CronetClient", "RESPONSE = %s".format(response))
-        repository.experimentResponse.value = repository.gson.fromJson(response, ExperimentResponse::class.java)
+        repository.experimentResponse.postValue(repository.gson.fromJson(output.toString(), ExperimentResponse::class.java))
+
+        val currentTime = System.currentTimeMillis()
+        repository.addGauge("FINISHED", currentTime)
+        repository.setTotalTimeTaken(currentTime)
     }
 
     override fun onFailed(request: UrlRequest?, info: UrlResponseInfo?, error: CronetException?) {

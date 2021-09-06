@@ -9,11 +9,13 @@ import androidx.lifecycle.ViewModel
 class ExperimentDataViewModel : ViewModel() {
     val totalTimeTaken: LiveData<Long>
     val experimentData: LiveData<ExperimentResponse>
+    val metrics: LiveData<List<Gauge>>
 
     init {
         val repository = AbofExperimentRepository.getInstance()
         totalTimeTaken = repository.getTotalTimeTaken()
         experimentData = repository.getExperimentResponse()
+        metrics = repository.getMetrics()
     }
 
 }
